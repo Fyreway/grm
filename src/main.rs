@@ -1,6 +1,7 @@
 #![allow(unused)]
 
 use std::{
+    fs,
     io::{self, Write},
     time::Duration,
 };
@@ -28,6 +29,8 @@ fn rows() -> u16 {
 #[derive(Parser, Debug)]
 #[clap(author, version)]
 struct Args {
+    #[clap(value_parser)]
+    filename: String,
     #[clap(short = 'C', long)]
     nocolor: bool,
     #[clap(short = 'U', long, value_parser, default_value_t = 5)]
@@ -41,12 +44,13 @@ struct State {
     buf: String,
 }
 impl State {
-    fn new(args: &Args, buf: String) -> Self {
+    fn new(args: &Args) -> Self {
         Self {
             color: !args.nocolor,
             update_time: Duration::from_millis(args.update_time),
             stdout: io::stdout(),
-            buf,
+            buf: fs::read_to_string(&args.filename)
+                .expect(format!("Could not open file '{}'", args.filename).as_str()),
         }
     }
 
@@ -123,9 +127,7 @@ fn putchar(stdout: &mut io::Stdout, ch: char) -> io::Result<()> {
 }
 
 fn main() -> crossterm::Result<()> {
-    let args = Args::parse();
-
-    let mut state = State::new(&args, "foobar\nfoo".to_string());
+    let mut state = State::new(&Args::parse());
     state.init()?;
 
     loop {
