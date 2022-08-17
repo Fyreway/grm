@@ -30,10 +30,13 @@ fn rows() -> u16 {
 struct Args {
     #[clap(short = 'C', long)]
     nocolor: bool,
+    #[clap(short = 'U', long, value_parser, default_value_t = 5)]
+    update_time: u64,
 }
 
 struct State {
     color: bool,
+    update_time: Duration,
     stdout: io::Stdout,
     buf: String,
 }
@@ -41,6 +44,7 @@ impl State {
     fn new(args: &Args, buf: String) -> Self {
         Self {
             color: !args.nocolor,
+            update_time: Duration::from_millis(args.update_time),
             stdout: io::stdout(),
             buf,
         }
@@ -59,7 +63,7 @@ impl State {
     }
 
     fn get_input(&self) -> crossterm::Result<bool> {
-        if event::poll(Duration::from_millis(1))? {
+        if event::poll(self.update_time)? {
             match event::read()? {
                 Event::Key(e) => match e.code {
                     KeyCode::Char(c) => match c {
