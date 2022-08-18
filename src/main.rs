@@ -42,15 +42,22 @@ struct State {
     update_time: Duration,
     stdout: io::Stdout,
     buf: String,
+    line_count: usize,
+    num_width: usize,
 }
 impl State {
     fn new(args: &Args) -> Self {
+        let buf = fs::read_to_string(&args.filename)
+            .expect(format!("Could not open file '{}'", args.filename).as_str());
+        let line_count = bytecount::count(buf.as_bytes(), b'\n');
+
         Self {
             color: !args.nocolor,
             update_time: Duration::from_millis(args.update_time),
             stdout: io::stdout(),
-            buf: fs::read_to_string(&args.filename)
-                .expect(format!("Could not open file '{}'", args.filename).as_str()),
+            buf,
+            line_count,
+            num_width: line_count.to_string().chars().count(),
         }
     }
 
@@ -85,6 +92,7 @@ impl State {
 
     fn display(&mut self) -> crossterm::Result<()> {
         let color = self.color;
+        let num_width = self.num_width;
 
         let mut line = 0;
 
@@ -96,11 +104,18 @@ impl State {
             }))?
             .queue(MoveTo(0, 0))?;
 
-        for ch in self.buf.clone().chars() {
+        for (i, ch) in self.buf.clone().chars().enumerate() {
+            if i == 0 {
+                self.queue(PrintStyledContent(
+                    format!("{:>width$} ", line + 1, width = num_width + 1).dark_grey(),
+                ));
+            }
             match ch {
                 '\n' => {
                     line += 1;
-                    self.queue(MoveTo(0, line))?;
+                    self.queue(MoveTo(0, line))?.queue(PrintStyledContent(
+                        format!("{:>width$} ", line + 1, width = num_width + 1).dark_grey(),
+                    ));
                 }
                 _ => putchar(&mut self.stdout, ch)?,
             }
