@@ -113,6 +113,9 @@ impl State {
             match ch {
                 '\n' => {
                     line += 1;
+                    if line == rows() - 1 {
+                        break;
+                    }
                     self.queue(MoveTo(0, line))?.queue(PrintStyledContent(
                         format!("{:>width$} ", line + 1, width = num_width + 1).dark_grey(),
                     ));
